@@ -28,10 +28,10 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 
 ## Install Custom Version
 
-To install your desired version, add the version to the end of the installation command. e.g., ver `v2.3.0`:
+To install your desired version, add the version to the end of the installation command. e.g., ver `v2.3.1`:
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v2.3.0
+bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v2.3.1
 ```
 
 ## SSL Certificate
@@ -201,6 +201,7 @@ remove 3x-ui from docker
 - AlmaLinux 9+
 - Rocky Linux 9+
 - Oracle Linux 8+
+- OpenSUSE Tubleweed
 
 ## Supported Architectures and Devices
 
@@ -432,7 +433,7 @@ Enter the user ID in input field number 4. The Telegram accounts with this id wi
 | `POST` | `"/resetAllTraffics"`              | Reset traffics of all inbounds              |
 | `POST` | `"/resetAllClientTraffics/:id"`    | Reset traffics of all clients in an inbound |
 | `POST` | `"/delDepletedClients/:id"`        | Delete inbound depleted clients (-1: all)   |
-| `POST` | `"/onlines"`                       | Get Online users ( list of emails )       |
+| `POST` | `"/onlines"`                       | Get Online users ( list of emails )         |
 
 \*- The field `clientId` should be filled by:
 
