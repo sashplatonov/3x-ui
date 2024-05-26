@@ -1,20 +1,22 @@
 # ========================================================
 # Stage: Builder
 # ========================================================
-FROM golang:1.22-alpine AS builder
+FROM golang:1.22-bullseye AS builder
 WORKDIR /app
 ARG TARGETARCH
 
-RUN apk --no-cache --update add \
-  build-base \
-  gcc \
-  wget \
-  unzip
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    wget \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
 ENV CGO_ENABLED=1
 ENV CGO_CFLAGS="-D_LARGEFILE64_SOURCE"
+#ENV GOARCH=amd64
 RUN go build -o build/x-ui main.go
 RUN ./DockerInit.sh "$TARGETARCH"
 
@@ -31,6 +33,8 @@ RUN apt-get update && \
     tzdata \
     fail2ban \
     bash \
+    curl \
+    systemd \
     && apt-get clean
 
 COPY --from=builder /app/build/ /app/
