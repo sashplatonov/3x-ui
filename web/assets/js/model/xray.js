@@ -84,14 +84,43 @@ const SNIFFING_OPTION = {
     FAKEDNS: "fakedns"
 };
 
+const USAGE_OPTION = {
+    ENCIPHERMENT: "encipherment",
+    VERIFY: "verify",
+    ISSUE: "issue",
+};
+
+const DOMAIN_STRATEGY_OPTION = {
+    AS_IS: "AsIs",
+    USE_IP: "UseIP",
+    USE_IPV6V4: "UseIPv6v4",
+    USE_IPV6: "UseIPv6",
+    USE_IPV4V6: "UseIPv4v6",
+    USE_IPV4: "UseIPv4",
+    FORCE_IP: "ForceIP",
+    FORCE_IPV6V4: "ForceIPv6v4",
+    FORCE_IPV6: "ForceIPv6",
+    FORCE_IPV4V6: "ForceIPv4v6",
+    FORCE_IPV4: "ForceIPv4",
+};
+const TCP_CONGESTION_OPTION = {
+    BBR: "bbr",
+    CUBIC: "cubic",
+    RENO: "reno",
+};
+
 Object.freeze(Protocols);
 Object.freeze(SSMethods);
 Object.freeze(XTLS_FLOW_CONTROL);
 Object.freeze(TLS_FLOW_CONTROL);
 Object.freeze(TLS_VERSION_OPTION);
 Object.freeze(TLS_CIPHER_OPTION);
+Object.freeze(UTLS_FINGERPRINT);
 Object.freeze(ALPN_OPTION);
 Object.freeze(SNIFFING_OPTION);
+Object.freeze(USAGE_OPTION);
+Object.freeze(DOMAIN_STRATEGY_OPTION);
+Object.freeze(TCP_CONGESTION_OPTION);
 
 class XrayCommonClass {
 
@@ -526,6 +555,8 @@ class TlsStreamSettings extends XrayCommonClass {
                 maxVersion = TLS_VERSION_OPTION.TLS13,
                 cipherSuites = '',
                 rejectUnknownSni = false,
+                disableSystemRoot = false,
+                enableSessionResumption = false,
                 certificates=[new TlsStreamSettings.Cert()],
                 alpn=[ALPN_OPTION.H2,ALPN_OPTION.HTTP1],
                 settings=new TlsStreamSettings.Settings()) {
@@ -535,6 +566,8 @@ class TlsStreamSettings extends XrayCommonClass {
         this.maxVersion = maxVersion;
         this.cipherSuites = cipherSuites;
         this.rejectUnknownSni = rejectUnknownSni;
+        this.disableSystemRoot = disableSystemRoot;
+        this.enableSessionResumption = enableSessionResumption;
         this.certs = certificates;
         this.alpn = alpn;
         this.settings = settings;
@@ -564,6 +597,8 @@ class TlsStreamSettings extends XrayCommonClass {
             json.maxVersion,
             json.cipherSuites,
             json.rejectUnknownSni,
+            json.disableSystemRoot,
+            json.enableSessionResumption,
             certs,
             json.alpn,
             settings,
@@ -577,6 +612,8 @@ class TlsStreamSettings extends XrayCommonClass {
             maxVersion: this.maxVersion,
             cipherSuites: this.cipherSuites,
             rejectUnknownSni: this.rejectUnknownSni,
+            disableSystemRoot: this.disableSystemRoot,
+            enableSessionResumption: this.enableSessionResumption,
             certificates: TlsStreamSettings.toJsonArray(this.certs),
             alpn: this.alpn,
             settings: this.settings,
@@ -585,7 +622,7 @@ class TlsStreamSettings extends XrayCommonClass {
 }
 
 TlsStreamSettings.Cert = class extends XrayCommonClass {
-    constructor(useFile=true, certificateFile='', keyFile='', certificate='', key='', ocspStapling=3600) {
+    constructor(useFile=true, certificateFile='', keyFile='', certificate='', key='', ocspStapling=3600, oneTimeLoading=false, usage=USAGE_OPTION.ENCIPHERMENT) {
         super();
         this.useFile = useFile;
         this.certFile = certificateFile;
@@ -593,6 +630,8 @@ TlsStreamSettings.Cert = class extends XrayCommonClass {
         this.cert = certificate instanceof Array ? certificate.join('\n') : certificate;
         this.key = key instanceof Array ? key.join('\n') : key;
         this.ocspStapling = ocspStapling;
+        this.oneTimeLoading = oneTimeLoading;
+        this.usage = usage;
     }
 
     static fromJson(json={}) {
@@ -602,6 +641,8 @@ TlsStreamSettings.Cert = class extends XrayCommonClass {
                 json.certificateFile,
                 json.keyFile, '', '',
                 json.ocspStapling,
+                json.oneTimeLoading,
+                json.usage,
             );
         } else {
             return new TlsStreamSettings.Cert(
@@ -609,6 +650,8 @@ TlsStreamSettings.Cert = class extends XrayCommonClass {
                 json.certificate.join('\n'),
                 json.key.join('\n'),
                 json.ocspStapling,
+                json.oneTimeLoading,
+                json.usage,
             );
         }
     }
@@ -619,12 +662,16 @@ TlsStreamSettings.Cert = class extends XrayCommonClass {
                 certificateFile: this.certFile,
                 keyFile: this.keyFile,
                 ocspStapling: this.ocspStapling,
+                oneTimeLoading: this.oneTimeLoading,
+                usage: this.usage,
             };
         } else {
             return {
                 certificate: this.cert.split('\n'),
                 key: this.key.split('\n'),
                 ocspStapling: this.ocspStapling,
+                oneTimeLoading: this.oneTimeLoading,
+                usage: this.usage,
             };
         }
     }
@@ -649,6 +696,7 @@ TlsStreamSettings.Settings = class extends XrayCommonClass {
         };
     }
 };
+
 class XtlsStreamSettings extends XrayCommonClass {
     constructor(serverName='',
                 certificates=[new XtlsStreamSettings.Cert()],
@@ -698,13 +746,16 @@ class XtlsStreamSettings extends XrayCommonClass {
 }
 
 XtlsStreamSettings.Cert = class extends XrayCommonClass {
-    constructor(useFile=true, certificateFile='', keyFile='', certificate='', key='') {
+    constructor(useFile=true, certificateFile='', keyFile='', certificate='', key='', ocspStapling=3600, oneTimeLoading=false, usage=USAGE_OPTION.ENCIPHERMENT) {
         super();
         this.useFile = useFile;
         this.certFile = certificateFile;
         this.keyFile = keyFile;
         this.cert = certificate instanceof Array ? certificate.join('\n') : certificate;
         this.key = key instanceof Array ? key.join('\n') : key;
+        this.ocspStapling = ocspStapling;
+        this.oneTimeLoading = oneTimeLoading;
+        this.usage = usage;
     }
 
     static fromJson(json={}) {
@@ -712,13 +763,19 @@ XtlsStreamSettings.Cert = class extends XrayCommonClass {
             return new XtlsStreamSettings.Cert(
                 true,
                 json.certificateFile,
-                json.keyFile,
+                json.keyFile, '', '',
+                json.ocspStapling,
+                json.oneTimeLoading,
+                json.usage,
             );
         } else {
             return new XtlsStreamSettings.Cert(
                 false, '', '',
                 json.certificate.join('\n'),
                 json.key.join('\n'),
+                json.ocspStapling,
+                json.oneTimeLoading,
+                json.usage,
             );
         }
     }
@@ -728,11 +785,17 @@ XtlsStreamSettings.Cert = class extends XrayCommonClass {
             return {
                 certificateFile: this.certFile,
                 keyFile: this.keyFile,
+                ocspStapling: this.ocspStapling,
+                oneTimeLoading: this.oneTimeLoading,
+                usage: this.usage,
             };
         } else {
             return {
                 certificate: this.cert.split('\n'),
                 key: this.key.split('\n'),
+                ocspStapling: this.ocspStapling,
+                oneTimeLoading: this.oneTimeLoading,
+                usage: this.usage,
             };
         }
     }
@@ -843,12 +906,41 @@ RealityStreamSettings.Settings = class extends XrayCommonClass {
 };
 
 class SockoptStreamSettings extends XrayCommonClass {
-    constructor(acceptProxyProtocol = false, tcpFastOpen = false, mark = 0, tproxy="off") {
+    constructor(
+        acceptProxyProtocol = false,
+        tcpFastOpen = false,
+        mark = 0,
+        tproxy="off",
+        tcpMptcp = false,
+        tcpNoDelay = false,
+        domainStrategy = DOMAIN_STRATEGY_OPTION.USE_IP,
+        tcpMaxSeg = 1440,
+        dialerProxy = "",
+        tcpKeepAliveInterval = 0,   
+        tcpKeepAliveIdle = 300,
+        tcpUserTimeout = 10000,
+        tcpcongestion = TCP_CONGESTION_OPTION.BBR,
+        V6Only = false,
+        tcpWindowClamp = 600,
+        interfaceName = "",
+    ) {
         super();
         this.acceptProxyProtocol = acceptProxyProtocol;
         this.tcpFastOpen = tcpFastOpen;
         this.mark = mark;
         this.tproxy = tproxy;
+        this.tcpMptcp = tcpMptcp;
+        this.tcpNoDelay = tcpNoDelay;
+        this.domainStrategy = domainStrategy;
+        this.tcpMaxSeg = tcpMaxSeg;
+        this.dialerProxy = dialerProxy;
+        this.tcpKeepAliveInterval = tcpKeepAliveInterval;
+        this.tcpKeepAliveIdle = tcpKeepAliveIdle;
+        this.tcpUserTimeout = tcpUserTimeout;
+        this.tcpcongestion = tcpcongestion;
+        this.V6Only = V6Only;
+        this.tcpWindowClamp = tcpWindowClamp;
+        this.interfaceName = interfaceName;
     }
     
     static fromJson(json = {}) {
@@ -858,6 +950,18 @@ class SockoptStreamSettings extends XrayCommonClass {
             json.tcpFastOpen,
             json.mark,
             json.tproxy,
+            json.tcpMptcp,
+            json.tcpNoDelay,
+            json.domainStrategy,
+            json.tcpMaxSeg,
+            json.dialerProxy,
+            json.tcpKeepAliveInterval,
+            json.tcpKeepAliveIdle,
+            json.tcpUserTimeout,
+            json.tcpcongestion,
+            json.V6Only,
+            json.tcpWindowClamp,
+            json.interface,
         );
     }
 
@@ -867,6 +971,18 @@ class SockoptStreamSettings extends XrayCommonClass {
             tcpFastOpen: this.tcpFastOpen,
             mark: this.mark,
             tproxy: this.tproxy,
+            tcpMptcp: this.tcpMptcp,
+            tcpNoDelay: this.tcpNoDelay,
+            domainStrategy: this.domainStrategy,
+            tcpMaxSeg: this.tcpMaxSeg,
+            dialerProxy: this.dialerProxy,
+            tcpKeepAliveInterval: this.tcpKeepAliveInterval,
+            tcpKeepAliveIdle: this.tcpKeepAliveIdle,
+            tcpUserTimeout: this.tcpUserTimeout,
+            tcpcongestion: this.tcpcongestion,
+            V6Only: this.V6Only,
+            tcpWindowClamp: this.tcpWindowClamp,
+            interface: this.interfaceName,
         };
     }
 }
@@ -1856,7 +1972,7 @@ Inbound.VmessSettings = class extends Inbound.Settings {
     }
 };
 Inbound.VmessSettings.Vmess = class extends XrayCommonClass {
-    constructor(id=RandomUtil.randomUUID(), email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId=0, subId=RandomUtil.randomLowerAndNum(16), reset=0) {
+    constructor(id=RandomUtil.randomUUID(), email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId='', subId=RandomUtil.randomLowerAndNum(16), reset=0) {
         super();
         this.id = id;
         this.email = email;
@@ -1947,7 +2063,7 @@ Inbound.VLESSSettings = class extends Inbound.Settings {
 };
 
 Inbound.VLESSSettings.VLESS = class extends XrayCommonClass {
-    constructor(id=RandomUtil.randomUUID(), flow='', email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId=0, subId=RandomUtil.randomLowerAndNum(16), reset=0) {
+    constructor(id=RandomUtil.randomUUID(), flow='', email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId='', subId=RandomUtil.randomLowerAndNum(16), reset=0) {
         super();
         this.id = id;
         this.flow = flow;
@@ -2072,7 +2188,7 @@ Inbound.TrojanSettings = class extends Inbound.Settings {
     }
 };
 Inbound.TrojanSettings.Trojan = class extends XrayCommonClass {
-    constructor(password=RandomUtil.randomSeq(10), flow='', email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId=0, subId=RandomUtil.randomLowerAndNum(16), reset=0) {
+    constructor(password=RandomUtil.randomSeq(10), flow='', email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId='', subId=RandomUtil.randomLowerAndNum(16), reset=0) {
         super();
         this.password = password;
         this.flow = flow;
@@ -2217,7 +2333,7 @@ Inbound.ShadowsocksSettings = class extends Inbound.Settings {
 };
 
 Inbound.ShadowsocksSettings.Shadowsocks = class extends XrayCommonClass {
-    constructor(method='', password=RandomUtil.randomShadowsocksPassword(), email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId=0, subId=RandomUtil.randomLowerAndNum(16), reset=0) {
+    constructor(method='', password=RandomUtil.randomShadowsocksPassword(), email=RandomUtil.randomLowerAndNum(8),limitIp=0, totalGB=0, expiryTime=0, enable=true, tgId='', subId=RandomUtil.randomLowerAndNum(16), reset=0) {
         super();
         this.method = method;
         this.password = password;
